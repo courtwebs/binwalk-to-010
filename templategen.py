@@ -8,10 +8,16 @@ class BinaryItem:
 
     """ Creates a string of acceptable characters for a variable name for the 010 template """
     def get_name(self):
-        # Limiting name length so that we don't get garbage in the name... 
-        # this should be done more intelligently so that we preserve more 
-        # meaning. Consider maybe escaping illegal characters?
-        return"_".join(self.description.split(' '))[:10]
+        replacement_char = "_"
+        illegal_chars = ["\\", "/", ":", "-", ",", ".", ")", "(", "[", "]", "\"", "'", "!", "+", "=", "@", "#", "$", "%", "^", "&", "*", "~", "`", "<", ">", "?"]
+        name = self.description
+        
+        for c in illegal_chars:
+            name = name.replace(c, replacement_char)
+
+        name = replacement_char.join(name.split())
+
+        return name
 
     """ Calculate the size of this item relative to the address of the next identified item """
     def get_size(self, next_item):
@@ -30,11 +36,9 @@ def parse_binwalk_output(binwalk_output):
             linenum += 1    
             s = line.split()
 
-            # First three line are header
+            # First three lines are header
             if linenum > 3 and len(s) > 2:
-                print(s)
                 # 7 spaces delineate the items
-                print(" ".join(s[2:]))
                 b.append(BinaryItem(int(s[0]), " ".join(s[2:])))
 
     return b
@@ -43,7 +47,8 @@ def parse_binwalk_output(binwalk_output):
 def generate_template(binary_items):
     template = ""
 
-    print(len(binary_items))
+    if binary_items[0].address != 0:
+        binary_items.insert(0, BinaryItem(0, "filler"))
 
     for i in xrange(len(binary_items)):
         item = binary_items[i]
@@ -53,7 +58,8 @@ def generate_template(binary_items):
         else:
             next_item = None
 
-        template += "struct {\n\tchar " + item.get_name() + "[" + str(item.get_size(next_item)) + "]\n};\n"
+        template += "char s" + str(i) + item.get_name() + "[" + str(item.get_size(next_item)) + "];\n"
+
 
     return template
 
